@@ -1,0 +1,14 @@
+- name: lab02-ansible
+  become: true
+  hosts: machine1
+  roles: 
+    - roles/SonatypeNexus
+
+
+  
+
+     
+
+
+     
+        
