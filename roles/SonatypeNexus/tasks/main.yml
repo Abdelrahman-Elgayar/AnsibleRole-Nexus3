@@ -1,0 +1,73 @@
+- name: install required utilites
+  yum:
+    update_cache: true
+    name: 
+         - wget 
+         - java-1.8.0-openjdk.x86_64
+
+- name: creating a directory
+  file: 
+    path=/application
+    state=directory
+
+- name: Download the latest nexus
+  shell:
+        chdir: /application
+        cmd: wget -O nexus.tar.gz https://download.sonatype.com/nexus/3/latest-unix.tar.gz
+
+- name: decompress
+  unarchive:
+    src: /application/nexus.tar.gz
+    dest: /application
+    remote_src: yes
+
+- name: rename
+  shell: 
+     mv /application/nexus-3* /application/nexus
+
+-  name: adding a new user
+   user:
+      name: nexus
+
+-  name: change ownership of nexus files
+   file:
+     path: /application
+     state: directory
+     recurse: yes
+     owner: nexus
+     group: nexus
+
+- name: run as nexus user
+  lineinfile: 
+    dest: /application/nexus/bin/nexus.rc
+    regexp: '#run_as_user=""'
+    line: 'run_as_user="nexus"'
+    backrefs: true
+
+- name: adding nexus as a systemd service
+  blockinfile:
+    create: true
+    path: /etc/systemd/system/nexus.service
+    block: |
+      [Unit]
+      Description=nexus service
+      After=network.target
+
+      [Service]
+      Type=forking
+      LimitNOFILE=65536
+      User=nexus
+      Group=nexus
+      ExecStart=/application/nexus/bin/nexus start
+      ExecStop=/application/nexus/bin/nexus stop
+      User=nexus
+      Restart=on-abort
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: enable nexus service on boot
+  service:
+        name: nexus
+        enabled: true
+        state: started
